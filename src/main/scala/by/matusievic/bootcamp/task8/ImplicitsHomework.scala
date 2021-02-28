@@ -23,10 +23,13 @@ object ImplicitsHomework {
     trait GetSizeScore[T] {
       def apply(value: T): SizeScore
     }
+    object GetSizeScore {
+      def apply[T]()(implicit instance: GetSizeScore[T]): GetSizeScore[T] = instance
+    }
 
     object syntax {
       implicit class GetSizeScoreOps[T: GetSizeScore](inner: T) {
-        def sizeScore: SizeScore = implicitly[GetSizeScore[T]].apply(inner)
+        def sizeScore: SizeScore = GetSizeScore[T].apply(inner)
       }
     }
 
@@ -60,7 +63,6 @@ object ImplicitsHomework {
 
       def put(key: K, value: V): Unit = {
         val requiredSpace = key.sizeScore + value.sizeScore
-
         if (requiredSpace < maxSizeScore) {
           freeSpace(requiredSpace, maxSizeScore)
           map(key) = value
@@ -80,10 +82,17 @@ object ImplicitsHomework {
     trait Iterate[-F[_]] {
       def iterator[T](f: F[T]): Iterator[T]
     }
+    object Iterate {
+      def apply[F[_]]()(implicit instance: Iterate[F]): Iterate[F] = instance
+    }
+
     trait Iterate2[-F[_, _]] {
       def iterator1[T, S](f: F[T, S]): Iterator[T]
 
       def iterator2[T, S](f: F[T, S]): Iterator[S]
+    }
+    object Iterate2 {
+      def apply[F[_, _]]()(implicit instance: Iterate2[F]): Iterate2[F] = instance
     }
 
     object instances {
@@ -106,44 +115,30 @@ object ImplicitsHomework {
         override def iterator2[T, S](f: PackedMultiMap[T, S]): Iterator[S] = f.inner.map { case (_, v) => v }.iterator
       }
 
-      implicit def byteGetSizeScore: GetSizeScore[Byte] = new GetSizeScore[Byte]() {
-        override def apply(value: Byte): SizeScore = 1
-      }
+      implicit def byteGetSizeScore: GetSizeScore[Byte] = _ => 1
 
-      implicit def intGetSizeScore: GetSizeScore[Int] = new GetSizeScore[Int]() {
-        override def apply(value: Int): SizeScore = 4
-      }
+      implicit def intGetSizeScore: GetSizeScore[Int] = _ => 4
 
-      implicit def longGetSizeScore: GetSizeScore[Long] = new GetSizeScore[Long]() {
-        override def apply(value: Long): SizeScore = 8
-      }
+      implicit def longGetSizeScore: GetSizeScore[Long] = _ => 8
 
-      implicit def charGetSizeScore: GetSizeScore[Char] = new GetSizeScore[Char]() {
-        override def apply(value: Char): SizeScore = 2
-      }
+      implicit def charGetSizeScore: GetSizeScore[Char] = _ => 2
 
-      implicit def stringGetSizeScore: GetSizeScore[String] = new GetSizeScore[String]() {
-        override def apply(value: String): SizeScore = {
-          val getSizeScore = implicitly[GetSizeScore[Char]].apply _
-          12 + value.map(getSizeScore).sum
-        }
+      implicit def stringGetSizeScore: GetSizeScore[String] = s => {
+        val getSizeScore: Char => Int = GetSizeScore[Char].apply
+        12 + s.map(getSizeScore).sum
       }
+    }
 
-      implicit def iterateGetSizeScore[T: GetSizeScore, F[_] : Iterate]: GetSizeScore[F[T]] = new GetSizeScore[F[T]]() {
-        override def apply(value: F[T]): SizeScore = {
-          val getSizeScore: T => Int = implicitly[GetSizeScore[T]].apply
-          12 + implicitly[Iterate[F]].iterator(value).map(getSizeScore).sum
-        }
-      }
+    implicit def iterateGetSizeScore[T: GetSizeScore, F[_] : Iterate]: GetSizeScore[F[T]] = i => {
+      val getSizeScore: T => Int = GetSizeScore[T].apply
+      12 + Iterate[F].iterator(i).map(getSizeScore).sum
+    }
 
-      implicit def iterate2GetSizeScore[K: GetSizeScore, V: GetSizeScore, F[_, _] : Iterate2]: GetSizeScore[F[K, V]] = new GetSizeScore[F[K, V]] {
-        override def apply(value: F[K, V]): SizeScore = {
-          val iterate = implicitly[Iterate2[F]]
-          val getSizeScoreKey: K => Int = implicitly[GetSizeScore[K]].apply
-          val getSizeScoreValue: V => Int = implicitly[GetSizeScore[V]].apply
-          12 + iterate.iterator1(value).map(getSizeScoreKey).sum + iterate.iterator2(value).map(getSizeScoreValue).sum
-        }
-      }
+    implicit def iterate2GetSizeScore[K: GetSizeScore, V: GetSizeScore, F[_, _] : Iterate2]: GetSizeScore[F[K, V]] = i => {
+      val iterate = Iterate2[F]
+      val getSizeScoreKey: K => Int = GetSizeScore[K].apply
+      val getSizeScoreValue: V => Int = GetSizeScore[V].apply
+      12 + iterate.iterator1(i).map(getSizeScoreKey).sum + iterate.iterator2(i).map(getSizeScoreValue).sum
     }
 
   }
