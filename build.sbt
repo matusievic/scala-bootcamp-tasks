@@ -9,3 +9,5 @@ val scalaTestVersion = "3.1.0.0-RC2"
 libraryDependencies ++= Seq(
   "org.scalatestplus" %% "scalatestplus-scalacheck" % scalaTestVersion % Test
 )
+
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVersion.full)
