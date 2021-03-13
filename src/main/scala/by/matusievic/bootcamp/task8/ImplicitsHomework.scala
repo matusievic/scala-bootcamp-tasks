@@ -54,11 +54,12 @@ object ImplicitsHomework {
       private def cacheScoreSize: Int = map.keys.map(_.sizeScore).sum + map.values.map(_.sizeScore).sum
 
       @tailrec
-      private def freeSpace(requiredSpace: Int, maxSize: Int): Unit = map.headOption match {
-        case Some((key, _)) if cacheScoreSize + requiredSpace > maxSize =>
+      private def freeSpace(requiredSpace: Int, maxSize: Int): Unit = {
+        if (cacheScoreSize + requiredSpace > maxSize && map.nonEmpty) {
+          val (key, _) = map.head
           map.remove(key)
           freeSpace(requiredSpace, maxSize)
-        case _ => ()
+        }
       }
 
       def put(key: K, value: V): Unit = {
@@ -97,6 +98,10 @@ object ImplicitsHomework {
 
     object instances {
 
+      import syntax._
+
+      val HeaderSize = 12
+
       implicit val iterableOnceIterate: Iterate[Iterable] = new Iterate[Iterable] {
         override def iterator[T](f: Iterable[T]): Iterator[T] = f.iterator
       }
@@ -125,20 +130,17 @@ object ImplicitsHomework {
 
       implicit def stringGetSizeScore: GetSizeScore[String] = s => {
         val getSizeScore: Char => Int = GetSizeScore[Char].apply
-        12 + s.map(getSizeScore).sum
+        HeaderSize + s.map(getSizeScore).sum
       }
-    }
 
-    implicit def iterateGetSizeScore[T: GetSizeScore, F[_] : Iterate]: GetSizeScore[F[T]] = i => {
-      val getSizeScore: T => Int = GetSizeScore[T].apply
-      12 + Iterate[F].iterator(i).map(getSizeScore).sum
-    }
+      implicit def iterateGetSizeScore[T: GetSizeScore, F[_] : Iterate]: GetSizeScore[F[T]] = i => {
+        HeaderSize + Iterate[F].iterator(i).map(_.sizeScore).sum
+      }
 
-    implicit def iterate2GetSizeScore[K: GetSizeScore, V: GetSizeScore, F[_, _] : Iterate2]: GetSizeScore[F[K, V]] = i => {
-      val iterate = Iterate2[F]
-      val getSizeScoreKey: K => Int = GetSizeScore[K].apply
-      val getSizeScoreValue: V => Int = GetSizeScore[V].apply
-      12 + iterate.iterator1(i).map(getSizeScoreKey).sum + iterate.iterator2(i).map(getSizeScoreValue).sum
+      implicit def iterate2GetSizeScore[K: GetSizeScore, V: GetSizeScore, F[_, _] : Iterate2]: GetSizeScore[F[K, V]] = i => {
+        val iterate = Iterate2[F]
+        HeaderSize + iterate.iterator1(i).map(_.sizeScore).sum + iterate.iterator2(i).map(_.sizeScore).sum
+      }
     }
 
   }
@@ -169,7 +171,7 @@ object ImplicitsHomework {
                             )
     object FbiNote {
       implicit def fbiNoteGetSizeScore: GetSizeScore[FbiNote] = n => {
-        n.month.sizeScore + n.favouriteChar.sizeScore + n.watchedPewDiePieTimes.sizeScore
+        HeaderSize + n.month.sizeScore + n.favouriteChar.sizeScore + n.watchedPewDiePieTimes.sizeScore
       }
     }
 
