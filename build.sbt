@@ -17,3 +17,5 @@ libraryDependencies ++= Seq(
   "org.scalaj" %% "scalaj-http" % scalajVersion,
   "org.scalatestplus" %% "scalatestplus-scalacheck" % scalaTestVersion % Test
 )
+
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVersion.full)
